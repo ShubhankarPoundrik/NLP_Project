@@ -1,5 +1,6 @@
 import json
 from time import time
+import csv
 
 def extractData():
     start_time = time()
@@ -15,11 +16,7 @@ def extractData():
     
     if "annotations" in data:
         annotations_data = data["annotations"]
-        ct = 0
         for img_annotation in annotations_data:
-            # if ct == 10:
-            #     break
-            # ct += 1
             extracted_data.append({"image_id":img_annotation["image_id"], "bbox":img_annotation["bbox"], "category_id":img_annotation["category_id"]})
 
     else:
@@ -44,6 +41,7 @@ def extractData():
 
 def filterToRemoveMultiples():
     # filter out annotations with multiple objects of same class in the image
+
     # Read data from the file
     start_time = time()
     file_path = "extracted_data.json"
@@ -75,7 +73,76 @@ def filterToRemoveMultiples():
     print(f"Written {len(ans_json['annotations'])} annotations to file")
     print("Done. Time taken: ", (time() - start_time)/60, " minutes.")
 
+def determinePositionAndMakeCsvFile():
+    positionMap = {0: "topLeft", 1: "topCenter", 2: "topRight", 3: "middleLeft", 4: "middleCenter", 5: "middleRight", 6: "bottomLeft", 7: "bottomCenter", 8: "bottomRight"}
+    start_time = time()
+    file_path = "annotations/instances_val2017.json"
+    dimensionsDictionary = {}
+    data = None
+    try:
+        with open(file_path) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print("File not found.")
+        return
+    
+    if "images" in data:
+        images_data = data["images"]
+        for img in images_data:
+            dimensionsDictionary[img["id"]] = {"width": img["width"], "height": img["height"]}
+    else:
+        print("No 'images' key found in the JSON file.")
+        return
+    # read data from filtered_data.json
+    file_path = "filtered_data.json"
+    with open(file_path, "r") as file:
+        filteredData = json.load(file)
+    # create a dictionary to store the final data
+    finalData = []
+    ct = 0
+    for annotation in filteredData["annotations"]:
+        image_id = annotation["image_id"]
+        bbox = annotation["bbox"]
+        category_id = annotation["category_id"]
+        height = dimensionsDictionary[image_id]["height"]
+        width = dimensionsDictionary[image_id]["width"]
+        bboxCenter = [bbox[0] + bbox[2]/2, bbox[1] + bbox[3]/2]
+        # if the image is divided into 3 parts vertically and 3 parts horizontally, which part is the bboxCenter in?
+        # 0, 1, 2
+        # 3, 4, 5
+        # 6, 7, 8
+        if bboxCenter[0] < width/3:
+            if bboxCenter[1] < height/3:
+                position = 0
+            elif bboxCenter[1] < 2*height/3:
+                position = 3
+            else:
+                position = 6
+        elif bboxCenter[0] < 2*width/3:
+            if bboxCenter[1] < height/3:
+                position = 1
+            elif bboxCenter[1] < 2*height/3:
+                position = 4
+            else:
+                position = 7
+        else:
+            if bboxCenter[1] < height/3:
+                position = 2
+            elif bboxCenter[1] < 2*height/3:
+                position = 5
+            else:
+                position = 8
+        finalData.append([ct, image_id, bbox, category_id, height, width, position, positionMap[position]])
+        ct += 1
+    # write to csv file with headers
+    with open("filteredDataWithPosition.csv", "w") as file:
+        writer = csv.writer(file)
+        writer.writerow(["row_id", "image_id", "bbox", "category_id", "height", "width", "position", "positionName"])
+        writer.writerows(finalData)
+    print("Done. Time taken: ", (time() - start_time)/60, " minutes.")
+    
 
 
-extractData()
-filterToRemoveMultiples()
+# extractData()
+# filterToRemoveMultiples()
+determinePositionAndMakeCsvFile()
