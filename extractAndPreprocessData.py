@@ -73,6 +73,20 @@ def filterToRemoveMultiples():
     print(f"Written {len(ans_json['annotations'])} annotations to file")
     print("Done. Time taken: ", (time() - start_time)/60, " minutes.")
 
+
+def getCategoryNames():
+    # Read data from the file
+    start_time = time()
+    file_path = "annotations/instances_val2017.json"
+    with open(file_path, "r") as file:
+        data = json.load(file)
+    # Create a dictionary to store unique instances of category_id for each image_id
+    categoryNames = {}
+    for category in data["categories"]:
+        categoryNames[category["id"]] = [category["name"], category["supercategory"]]
+    print("Done. Time taken: ", (time() - start_time)/60, " minutes.")
+    return categoryNames
+
 def determinePositionAndMakeCsvFile():
     positionMap = {0: "topLeft", 1: "topCenter", 2: "topRight", 3: "middleLeft", 4: "middleCenter", 5: "middleRight", 6: "bottomLeft", 7: "bottomCenter", 8: "bottomRight"}
     start_time = time()
@@ -100,6 +114,7 @@ def determinePositionAndMakeCsvFile():
     # create a dictionary to store the final data
     finalData = []
     ct = 0
+    categoryMap = getCategoryNames()
     for annotation in filteredData["annotations"]:
         image_id = annotation["image_id"]
         bbox = annotation["bbox"]
@@ -132,12 +147,13 @@ def determinePositionAndMakeCsvFile():
                 position = 5
             else:
                 position = 8
-        finalData.append([ct, image_id, bbox, category_id, height, width, position, positionMap[position]])
+        categoryMapping = categoryMap[category_id]
+        finalData.append([ct, image_id, bbox, category_id, height, width, position, positionMap[position], categoryMapping[0], categoryMapping[1]])
         ct += 1
     # write to csv file with headers
     with open("filteredDataWithPosition.csv", "w") as file:
         writer = csv.writer(file)
-        writer.writerow(["row_id", "image_id", "bbox", "category_id", "height", "width", "position", "positionName"])
+        writer.writerow(["row_id", "image_id", "bbox", "category_id", "height", "width", "position", "positionName", "categoryName", "superCategoryName"])
         writer.writerows(finalData)
     print("Done. Time taken: ", (time() - start_time)/60, " minutes.")
     
