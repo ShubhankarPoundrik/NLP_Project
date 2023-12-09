@@ -56,6 +56,8 @@ def filterToRemoveMultiples():
 
     # Create a dictionary to store unique instances of category_id for each image_id
     filtered_data = {}
+    ct = 0
+    categoryMap = getCategoryNames()
     for annotation in data["annotations"]:
         image_id = annotation["image_id"]
         category_id = annotation["category_id"]
@@ -64,6 +66,9 @@ def filterToRemoveMultiples():
             filtered_data[(image_id, category_id)] = {"bbox": bbox, "error": False}
         else:
             filtered_data[(image_id, category_id)]["error"] = True
+            if ct <= 10:
+                print(f"{image_id} has multiple objects of category {category_id}, ie, {categoryMap[category_id]}")
+                ct += 1
 
     ans_list = []
     # dictionary without items with error = True in value
@@ -206,7 +211,7 @@ def determinePositionAndMakeCsvFile():
     print("Done. Time taken: ", (time() - start_time) / 60, " minutes.")
 
 
-step = 3
+step = 2
 if step == 1:
     extractData()
 elif step == 2:
